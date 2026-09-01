@@ -13,12 +13,17 @@ import {
 } from "lucide-react";
 import DOMPurify from "dompurify";
 import AppShell from "../../../shared/components/AppShell.jsx";
+import DevActivityCard from "../../../shared/components/DevActivityCard.jsx";
 import { KeyPill, PriorityPill, StatusPill } from "../components/IssuePills.jsx";
-import { getIssueAIAnalysis, getIssueDetail } from "../api.js";
+import { getIssueDetail } from "../../jira/api.js";
+import { getGitHubIssue } from "../../github/api.js";
+import { runAiAnalysis } from "../../ai-analysis/api.js";
 import { formatRelative, formatShortDate } from "../dateFormat.js";
+import { parseIssueRouteKey } from "../issueRoute.js";
 
-export default function JiraIssueDetail() {
-  const { key } = useParams();
+export default function IssueDetail() {
+  const { key: routeKey } = useParams();
+  const { source, id } = parseIssueRouteKey(routeKey);
   const [issue, setIssue] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -30,8 +35,12 @@ export default function JiraIssueDetail() {
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setAiHtml(null);
+    setAiError(null);
 
-    getIssueDetail(key)
+    const fetchIssue = source === "github" ? getGitHubIssue(id) : getIssueDetail(id);
+
+    fetchIssue
       .then((data) => {
         if (!cancelled) setIssue(data);
       })
@@ -45,13 +54,13 @@ export default function JiraIssueDetail() {
     return () => {
       cancelled = true;
     };
-  }, [key]);
+  }, [source, id]);
 
   async function handleRunAiAnalysis() {
     setAiLoading(true);
     setAiError(null);
     try {
-      const { html } = await getIssueAIAnalysis(key, issue);
+      const { html } = await runAiAnalysis(issue);
       setAiHtml(html);
     } catch (err) {
       setAiError(err.message || "AI analysis is temporarily unavailable.");
@@ -81,7 +90,7 @@ export default function JiraIssueDetail() {
       </div>
     </div>
   ) : (
-    key
+    routeKey
   );
 
   return (
@@ -97,7 +106,7 @@ export default function JiraIssueDetail() {
       ) : loading ? (
         <div className="bg-white border border-border rounded-card shadow-card flex flex-col items-center justify-center py-16">
           <Loader2 className="h-5 w-5 text-ink-muted animate-spin mb-2" />
-          <p className="text-sm text-ink-muted">Loading ticket from Jira...</p>
+          <p className="text-sm text-ink-muted">Loading ticket from {source === "github" ? "GitHub" : "Jira"}...</p>
         </div>
       ) : issue ? (
         <div className="space-y-4">
@@ -217,6 +226,8 @@ export default function JiraIssueDetail() {
               </ul>
             )}
           </div>
+
+          {source === "github" && <DevActivityCard identifier={id} />}
         </div>
       ) : null}
     </AppShell>

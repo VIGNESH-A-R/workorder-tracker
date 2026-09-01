@@ -60,3 +60,23 @@ model JiraCredential {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+// Single-row table (upserted at id 1) — same pattern as JiraCredential, one
+// GitHub connection for this demo. token is stored in plaintext, same
+// tradeoff as JiraCredential.apiToken.
+model GitHubCredential {
+  id        Int      @id @default(autoincrement())
+  owner     String
+  repo      String
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Single-row table (upserted at id 1) — determines which connected provider
+// (Jira or GitHub) the Issues, Ticket Optimization, and AI Analysis features
+// read from.
+model IntegrationSettings {
+  id             Int    @id @default(autoincrement())
+  activeProvider String @default("jira")
+}
