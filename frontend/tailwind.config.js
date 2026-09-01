@@ -8,16 +8,18 @@ export default {
       },
       colors: {
         primary: {
-          DEFAULT: "#4F46E5",
-          hover: "#4338CA",
+          DEFAULT: "#F97316",
+          hover: "#EA580C",
         },
-        surface: "#F8FAFC",
-        border: "#E2E8F0",
+        surface: "#FFF8F3",
+        border: "#F1E4D8",
         ink: {
-          DEFAULT: "#0F172A",
-          muted: "#64748B",
+          DEFAULT: "#1F2937",
+          muted: "#6B7280",
         },
-        sidebar: "#0F172A",
+        sidebar: "#FFFCFA",
+        // Status pill colors are intentionally untouched by the orange re-theme —
+        // orange is a UI accent only, never a status color (see CLAUDE.md).
         status: {
           new: "#64748B",
           assigned: "#2563EB",
@@ -30,7 +32,8 @@ export default {
         control: "8px",
       },
       boxShadow: {
-        card: "0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06)",
+        card: "0 1px 2px 0 rgb(120 53 15 / 0.05), 0 1px 3px 0 rgb(120 53 15 / 0.08)",
+        "card-hover": "0 4px 12px 0 rgb(120 53 15 / 0.08), 0 2px 4px 0 rgb(120 53 15 / 0.06)",
       },
       keyframes: {
         "slide-in": {

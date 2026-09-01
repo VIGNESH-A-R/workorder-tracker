@@ -45,3 +45,18 @@ model WorkOrder {
   scheduledDate DateTime?
   createdAt     DateTime    @default(now())
 }
+
+// Single-row table (upserted at id 1) — there's only ever one Jira connection
+// for this demo. apiToken is stored in plaintext; see the comment in
+// features/jira/jiraClient.js for the same caveat as the JWT secret.
+model JiraCredential {
+  id        Int      @id @default(autoincrement())
+  siteUrl   String
+  email     String
+  apiToken  String
+  // Cached from Jira's /myself at save time so /jira/projects can check
+  // project role membership without a /myself round trip on every call.
+  accountId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

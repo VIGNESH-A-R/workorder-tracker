@@ -5,11 +5,12 @@ import swagger from "@fastify/swagger";
 import swaggerUI from "@fastify/swagger-ui";
 import prismaPlugin from "./plugins/prisma.js";
 import authPlugin from "./plugins/auth.js";
-import authRoutes from "./routes/auth.js";
-import workOrderRoutes from "./routes/workOrders.js";
-import technicianRoutes from "./routes/technicians.js";
-import customerRoutes from "./routes/customers.js";
-import userRoutes from "./routes/users.js";
+import authRoutes from "./features/auth/auth.routes.js";
+import workOrderRoutes from "./features/work-orders/workOrders.routes.js";
+import technicianRoutes from "./features/technicians/technicians.routes.js";
+import customerRoutes from "./features/customers/customers.routes.js";
+import userRoutes from "./features/users/users.routes.js";
+import jiraRoutes from "./features/jira/jira.routes.js";
 
 export async function buildApp(opts = {}) {
   const app = Fastify({ logger: opts.logger ?? true });
@@ -34,6 +35,7 @@ export async function buildApp(opts = {}) {
   await app.register(technicianRoutes, { prefix: "/technicians" });
   await app.register(customerRoutes, { prefix: "/customers" });
   await app.register(userRoutes, { prefix: "/users" });
+  await app.register(jiraRoutes, { prefix: "/jira" });
 
   app.get("/", async () => ({ status: "ok", service: "Work Order Tracker API" }));
 
