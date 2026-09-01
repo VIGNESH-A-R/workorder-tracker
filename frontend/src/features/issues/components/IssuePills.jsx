@@ -6,6 +6,8 @@ const STATUS_STYLES = {
   "To Do": "bg-slate-100 text-slate-600",
   "In Progress": "bg-amber-50 text-amber-700",
   Done: "bg-emerald-50 text-emerald-700",
+  Open: "bg-amber-50 text-amber-700",
+  Closed: "bg-emerald-50 text-emerald-700",
 };
 
 const PRIORITY_STYLES = {

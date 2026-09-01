@@ -4,6 +4,8 @@ import toast from "react-hot-toast";
 import AppShell from "../../../shared/components/AppShell.jsx";
 import { useAuth } from "../../auth/auth.jsx";
 import JiraIntegrationCard from "../../jira/components/JiraIntegrationCard.jsx";
+import GitHubIntegrationCard from "../../github/components/GitHubIntegrationCard.jsx";
+import ActiveSourceCard from "../../integrations/components/ActiveSourceCard.jsx";
 
 const inputClass =
   "w-full rounded-control border border-border px-3 py-2 text-sm text-ink placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary";
@@ -98,6 +100,8 @@ export default function Settings() {
         </div>
 
         <JiraIntegrationCard />
+        <GitHubIntegrationCard />
+        <ActiveSourceCard />
       </div>
     </AppShell>
   );

@@ -2,16 +2,19 @@ import { useNavigate } from "react-router-dom";
 import { AlertTriangle, Calendar, Folder, Target } from "lucide-react";
 import { KeyPill, PriorityPill, StatusPill, isHighPriorityNotStarted } from "./IssuePills.jsx";
 import { formatShortDate } from "../dateFormat.js";
+import { issueDetailPath } from "../issueRoute.js";
 
 export default function IssueCard({ issue }) {
   const navigate = useNavigate();
+  // priority is always null for GitHub issues, so this (and the pill below)
+  // naturally never fires/renders for them — no provider branching needed.
   const flagged = isHighPriorityNotStarted(issue);
   const startDate = formatShortDate(issue.startDate);
   const dueDate = formatShortDate(issue.dueDate);
 
   return (
     <div
-      onClick={() => navigate(`/admin/issues/${issue.key}`)}
+      onClick={() => navigate(issueDetailPath(issue.key))}
       className="bg-white border border-border rounded-card shadow-card hover:shadow-card-hover transition-shadow duration-150 p-5 cursor-pointer"
     >
       <div className="flex items-start justify-between gap-4 flex-wrap">

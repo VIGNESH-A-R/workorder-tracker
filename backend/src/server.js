@@ -11,6 +11,10 @@ import technicianRoutes from "./features/technicians/technicians.routes.js";
 import customerRoutes from "./features/customers/customers.routes.js";
 import userRoutes from "./features/users/users.routes.js";
 import jiraRoutes from "./features/jira/jira.routes.js";
+import githubRoutes from "./features/github/github.routes.js";
+import integrationsRoutes from "./features/integrations/integrations.routes.js";
+import aiAnalysisRoutes from "./features/ai-analysis/aiAnalysis.routes.js";
+import ticketOptimizationRoutes from "./features/ticket-optimization/ticketOptimization.routes.js";
 
 export async function buildApp(opts = {}) {
   const app = Fastify({ logger: opts.logger ?? true });
@@ -36,6 +40,10 @@ export async function buildApp(opts = {}) {
   await app.register(customerRoutes, { prefix: "/customers" });
   await app.register(userRoutes, { prefix: "/users" });
   await app.register(jiraRoutes, { prefix: "/jira" });
+  await app.register(githubRoutes, { prefix: "/github" });
+  await app.register(integrationsRoutes, { prefix: "/integrations" });
+  await app.register(aiAnalysisRoutes, { prefix: "/ai-analysis" });
+  await app.register(ticketOptimizationRoutes, { prefix: "/ticket-optimization" });
 
   app.get("/", async () => ({ status: "ok", service: "Work Order Tracker API" }));
 

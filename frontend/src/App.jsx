@@ -6,8 +6,8 @@ import WorkOrderDetail from "./features/work-orders/pages/WorkOrderDetail.jsx";
 import Technicians from "./features/technicians/pages/Technicians.jsx";
 import Customers from "./features/customers/pages/Customers.jsx";
 import Settings from "./features/settings/pages/Settings.jsx";
-import Issues from "./features/jira/pages/Issues.jsx";
-import JiraIssueDetail from "./features/jira/pages/JiraIssueDetail.jsx";
+import Issues from "./features/issues/pages/Issues.jsx";
+import IssueDetail from "./features/issues/pages/IssueDetail.jsx";
 import TicketOptimization from "./features/ticket-optimization/pages/TicketOptimization.jsx";
 import { useAuth } from "./features/auth/auth.jsx";
 
@@ -115,7 +115,7 @@ export default function App() {
         path="/admin/issues/:key"
         element={
           <AdminRoute>
-            <JiraIssueDetail />
+            <IssueDetail />
           </AdminRoute>
         }
       />
