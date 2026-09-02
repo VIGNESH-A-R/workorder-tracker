@@ -6,8 +6,10 @@ analyzing them with AI, behind a login.
 - **Backend:** Node.js + Fastify + Prisma (SQLite) + JWT auth
 - **Frontend:** React + Vite + React Router + Tailwind CSS
 
+
 See `CLAUDE.md` for a fuller project brief, coding conventions, and the
 GitHub-issue-driven development loop this project follows.
+
 
 ## Backend setup
 
