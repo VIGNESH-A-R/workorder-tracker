@@ -386,7 +386,7 @@ function IssueResultsList({ loading, error, providerLabel, issues, selectedKey, 
 
 export default function IssueListPanel({ provider, selectedKey, onSelect, onResultsChange }) {
   return (
-    <aside className="w-[320px] shrink-0 border-r border-slate-200 flex flex-col min-h-0 bg-white">
+    <aside className="w-[440px] shrink-0 border-r border-slate-200 flex flex-col min-h-0 bg-white">
       {provider === "github" ? (
         <GitHubList selectedKey={selectedKey} onSelect={onSelect} onResultsChange={onResultsChange} />
       ) : (

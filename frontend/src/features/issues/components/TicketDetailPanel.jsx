@@ -57,7 +57,7 @@ export default function TicketDetailPanel({ issue, source }) {
           <PriorityPill priority={issue.priority} />
         </div>
 
-        <div className="flex flex-wrap items-center gap-x-8 gap-y-3 mt-5">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mt-5">
           <MetaField label="Assignee">{issue.assignee || "Unassigned"}</MetaField>
           <MetaField label="Reporter">{issue.reporter || "—"}</MetaField>
           <MetaField label="Created">{formatShortDate(issue.created) || "—"}</MetaField>
@@ -66,7 +66,7 @@ export default function TicketDetailPanel({ issue, source }) {
       </div>
 
       <CollapsibleSection title="Details" defaultOpen>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+        <div className="grid grid-cols-[240px_240px] gap-x-6 gap-y-4">
           <DetailRow label={source === "github" ? "Repo" : "Project"}>{issue.project || "—"}</DetailRow>
           <DetailRow label="Priority">
             {issue.priority ? <PriorityPill priority={issue.priority} /> : "—"}
