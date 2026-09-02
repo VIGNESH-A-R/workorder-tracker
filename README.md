@@ -9,6 +9,7 @@ analyzing them with AI, behind a login.
 See `CLAUDE.md` for a fuller project brief, coding conventions, and the
 GitHub-issue-driven development loop this project follows.
 
+
 ## Backend setup
 
 ```
