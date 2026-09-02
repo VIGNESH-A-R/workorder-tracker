@@ -1,5 +1,6 @@
 import {
   JiraApiError,
+  addComment,
   fetchBoards,
   fetchIssue,
   fetchProjects,
@@ -63,6 +64,15 @@ const issueSchema = {
   },
 };
 
+const commentSchema = {
+  type: "object",
+  properties: {
+    author: { type: "string" },
+    body: { type: "string" },
+    created: { type: ["string", "null"] },
+  },
+};
+
 const issueDetailSchema = {
   type: "object",
   properties: {
@@ -77,17 +87,15 @@ const issueDetailSchema = {
     created: { type: ["string", "null"] },
     updated: { type: ["string", "null"] },
     dueDate: { type: ["string", "null"] },
-    comments: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          author: { type: "string" },
-          body: { type: "string" },
-          created: { type: ["string", "null"] },
-        },
-      },
-    },
+    comments: { type: "array", items: commentSchema },
+  },
+};
+
+const addCommentBodySchema = {
+  type: "object",
+  required: ["body"],
+  properties: {
+    body: { type: "string" },
   },
 };
 
@@ -211,6 +219,19 @@ function adfToPlainText(doc) {
   return adfNodeToText(doc)
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+// Inverse of adfToPlainText, for posting a new comment — wraps a plain
+// string as the minimal ADF document Jira's add-comment endpoint expects:
+// one paragraph node containing one text node. Not a general plain-text ->
+// ADF converter (no line-break/list handling), just enough for a single
+// comment composer's single-line-or-newlines input.
+function plainTextToAdf(text) {
+  return {
+    type: "doc",
+    version: 1,
+    content: [{ type: "paragraph", content: [{ type: "text", text }] }],
+  };
 }
 
 function mapIssueDetail(issue) {
@@ -589,6 +610,45 @@ export default async function jiraRoutes(fastify) {
       try {
         const issue = await fetchIssue(creds.siteUrl, creds.email, creds.apiToken, request.params.key);
         return mapIssueDetail(issue);
+      } catch (err) {
+        if (err instanceof JiraApiError && err.status === 404) {
+          return reply.code(404).send({ error: `Issue ${request.params.key} was not found.` });
+        }
+        const message = err instanceof JiraApiError ? err.message : "Failed to reach Jira.";
+        return reply.code(502).send({ error: message });
+      }
+    }
+  );
+
+  fastify.post(
+    "/issues/:key/comments",
+    { schema: { body: addCommentBodySchema, response: { 200: commentSchema } } },
+    async (request, reply) => {
+      const creds = await getCredentials();
+      if (!creds) {
+        return reply
+          .code(400)
+          .send({ error: "Jira is not connected yet. Add your credentials in Settings." });
+      }
+
+      const text = request.body.body.trim();
+      if (!text) {
+        return reply.code(400).send({ error: "Comment text is required." });
+      }
+
+      try {
+        const comment = await addComment(
+          creds.siteUrl,
+          creds.email,
+          creds.apiToken,
+          request.params.key,
+          plainTextToAdf(text)
+        );
+        return {
+          author: comment.author?.displayName || "Unknown",
+          body: adfToPlainText(comment.body),
+          created: comment.created || null,
+        };
       } catch (err) {
         if (err instanceof JiraApiError && err.status === 404) {
           return reply.code(404).send({ error: `Issue ${request.params.key} was not found.` });

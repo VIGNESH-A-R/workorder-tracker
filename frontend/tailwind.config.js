@@ -7,9 +7,15 @@ export default {
         sans: ["Inter", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
       },
       colors: {
+        // Single accent color, app-wide: Sidebar active state, primary
+        // buttons, links, focus rings, the Issues workspace's selected-card
+        // accent, Settings' toggle/active-section states, Login's button and
+        // headline highlight. Every component should reference this token —
+        // never a hardcoded hex or a one-off Tailwind hue class — so the
+        // brand color has exactly one source of truth.
         primary: {
-          DEFAULT: "#F97316",
-          hover: "#EA580C",
+          DEFAULT: "#5B5FEF",
+          hover: "#4B4FE0",
         },
         surface: "#FFF8F3",
         border: "#F1E4D8",
@@ -18,8 +24,9 @@ export default {
           muted: "#6B7280",
         },
         sidebar: "#FFFCFA",
-        // Status pill colors are intentionally untouched by the orange re-theme —
-        // orange is a UI accent only, never a status color (see CLAUDE.md).
+        // Status/severity pill colors are intentionally untouched by the
+        // accent color — they encode meaning (state/priority/severity), not
+        // brand, and must never be changed to match `primary` (see CLAUDE.md).
         status: {
           new: "#64748B",
           assigned: "#2563EB",

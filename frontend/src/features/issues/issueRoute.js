@@ -6,9 +6,9 @@
 // GitHub issues are addressed as "gh-<number>" instead.
 export function issueDetailPath(key) {
   if (key.startsWith("#")) {
-    return `/admin/issues/gh-${encodeURIComponent(key.slice(1))}`;
+    return `/issues/gh-${encodeURIComponent(key.slice(1))}`;
   }
-  return `/admin/issues/${encodeURIComponent(key)}`;
+  return `/issues/${encodeURIComponent(key)}`;
 }
 
 // Inverse of the encoding above — given the ":key" route param, returns

@@ -22,10 +22,13 @@ function authHeaders(token) {
   };
 }
 
-async function rawFetch(url, token) {
+async function rawFetch(url, token, options = {}) {
   let response;
   try {
-    response = await fetch(url, { headers: authHeaders(token) });
+    response = await fetch(url, {
+      ...options,
+      headers: { ...authHeaders(token), ...options.headers },
+    });
   } catch (err) {
     throw new GitHubApiError(`Could not reach GitHub: ${err.message}`);
   }
@@ -44,8 +47,8 @@ async function rawFetch(url, token) {
   return response;
 }
 
-function githubFetch(path, token) {
-  return rawFetch(`${GITHUB_API_BASE}${path}`, token);
+function githubFetch(path, token, options) {
+  return rawFetch(`${GITHUB_API_BASE}${path}`, token, options);
 }
 
 export async function testConnection(owner, repo, token) {
@@ -93,6 +96,19 @@ export async function fetchIssueComments(owner, repo, token, number) {
   const response = await githubFetch(
     `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${encodeURIComponent(number)}/comments`,
     token
+  );
+  return response.json();
+}
+
+export async function postIssueComment(owner, repo, token, number, body) {
+  const response = await githubFetch(
+    `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${encodeURIComponent(number)}/comments`,
+    token,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ body }),
+    }
   );
   return response.json();
 }

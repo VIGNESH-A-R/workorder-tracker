@@ -6,9 +6,6 @@ import swaggerUI from "@fastify/swagger-ui";
 import prismaPlugin from "./plugins/prisma.js";
 import authPlugin from "./plugins/auth.js";
 import authRoutes from "./features/auth/auth.routes.js";
-import workOrderRoutes from "./features/work-orders/workOrders.routes.js";
-import technicianRoutes from "./features/technicians/technicians.routes.js";
-import customerRoutes from "./features/customers/customers.routes.js";
 import userRoutes from "./features/users/users.routes.js";
 import jiraRoutes from "./features/jira/jira.routes.js";
 import githubRoutes from "./features/github/github.routes.js";
@@ -26,7 +23,7 @@ export async function buildApp(opts = {}) {
 
   await app.register(swagger, {
     openapi: {
-      info: { title: "Work Order Tracker API", version: "1.0.0" },
+      info: { title: "Ticketing System API", version: "1.0.0" },
     },
   });
   await app.register(swaggerUI, { routePrefix: "/docs" });
@@ -35,9 +32,6 @@ export async function buildApp(opts = {}) {
   await app.register(authPlugin);
 
   await app.register(authRoutes, { prefix: "/auth" });
-  await app.register(workOrderRoutes, { prefix: "/work-orders" });
-  await app.register(technicianRoutes, { prefix: "/technicians" });
-  await app.register(customerRoutes, { prefix: "/customers" });
   await app.register(userRoutes, { prefix: "/users" });
   await app.register(jiraRoutes, { prefix: "/jira" });
   await app.register(githubRoutes, { prefix: "/github" });
@@ -45,7 +39,7 @@ export async function buildApp(opts = {}) {
   await app.register(aiAnalysisRoutes, { prefix: "/ai-analysis" });
   await app.register(ticketOptimizationRoutes, { prefix: "/ticket-optimization" });
 
-  app.get("/", async () => ({ status: "ok", service: "Work Order Tracker API" }));
+  app.get("/", async () => ({ status: "ok", service: "Ticketing System API" }));
 
   return app;
 }

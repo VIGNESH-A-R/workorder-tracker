@@ -131,7 +131,7 @@ export default function SearchableSelect({
                       onMouseEnter={() => setHighlightedIndex(index)}
                       onClick={() => selectOption(option)}
                       className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-sm text-left transition-colors cursor-pointer ${
-                        isHighlighted ? "bg-orange-100 text-orange-600" : "text-ink hover:bg-[#FFF7ED]"
+                        isHighlighted ? "bg-primary/10 text-primary" : "text-ink hover:bg-slate-50"
                       }`}
                     >
                       <span className="truncate">{option.label}</span>

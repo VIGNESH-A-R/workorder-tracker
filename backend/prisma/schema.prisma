@@ -15,37 +15,6 @@ model User {
   role         String
 }
 
-model Customer {
-  id           Int         @id @default(autoincrement())
-  name         String
-  contactEmail String?
-  phone        String?
-  address      String?
-  workOrders   WorkOrder[]
-}
-
-model Technician {
-  id         Int         @id @default(autoincrement())
-  name       String
-  phone      String?
-  specialty  String?
-  workOrders WorkOrder[]
-}
-
-model WorkOrder {
-  id            Int         @id @default(autoincrement())
-  title         String
-  description   String?
-  customerId    Int
-  customer      Customer    @relation(fields: [customerId], references: [id])
-  location      String?
-  technicianId  Int?
-  technician    Technician? @relation(fields: [technicianId], references: [id])
-  status        String      @default("New")
-  scheduledDate DateTime?
-  createdAt     DateTime    @default(now())
-}
-
 // Single-row table (upserted at id 1) — there's only ever one Jira connection
 // for this demo. apiToken is stored in plaintext; see the comment in
 // features/jira/jiraClient.js for the same caveat as the JWT secret.

@@ -8,7 +8,10 @@ const OPTIONS = [
   { value: "github", label: "GitHub" },
 ];
 
-export default function ActiveSourceCard() {
+// `bare`: skip the outer bordered/shadowed card wrapper — used when this is
+// rendered as one section inside Settings' own panel (which already
+// provides the border), rather than as a standalone card.
+export default function ActiveSourceCard({ bare = false }) {
   const [active, setActive] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -35,11 +38,11 @@ export default function ActiveSourceCard() {
     }
   }
 
-  return (
-    <div className="bg-white border border-border rounded-card shadow-card p-6">
+  const content = (
+    <>
       <h2 className="text-sm font-semibold text-ink mb-1">Active Ticket Source</h2>
       <p className="text-xs text-ink-muted mb-4">
-        Determines which provider the Issues, Ticket Optimization, and AI Analysis features read from.
+        Determines which provider the Issues, Ticket Triage, and AI Analysis features read from.
       </p>
 
       {loading ? (
@@ -56,7 +59,7 @@ export default function ActiveSourceCard() {
                 disabled={updating}
                 className={`flex-1 flex items-center justify-between gap-2 rounded-control border px-3.5 py-2.5 text-sm font-medium transition-colors cursor-pointer disabled:opacity-60 disabled:pointer-events-none ${
                   isActive
-                    ? "border-primary bg-orange-50 text-primary-hover"
+                    ? "border-primary bg-primary/5 text-primary-hover"
                     : "border-border text-ink hover:bg-slate-50"
                 }`}
               >
@@ -67,6 +70,10 @@ export default function ActiveSourceCard() {
           })}
         </div>
       )}
-    </div>
+    </>
   );
+
+  if (bare) return content;
+
+  return <div className="bg-white border border-border rounded-card shadow-card p-6">{content}</div>;
 }
