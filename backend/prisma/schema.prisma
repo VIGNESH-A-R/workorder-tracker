@@ -15,37 +15,6 @@ model User {
   role         String
 }
 
-model Customer {
-  id           Int         @id @default(autoincrement())
-  name         String
-  contactEmail String?
-  phone        String?
-  address      String?
-  workOrders   WorkOrder[]
-}
-
-model Technician {
-  id         Int         @id @default(autoincrement())
-  name       String
-  phone      String?
-  specialty  String?
-  workOrders WorkOrder[]
-}
-
-model WorkOrder {
-  id            Int         @id @default(autoincrement())
-  title         String
-  description   String?
-  customerId    Int
-  customer      Customer    @relation(fields: [customerId], references: [id])
-  location      String?
-  technicianId  Int?
-  technician    Technician? @relation(fields: [technicianId], references: [id])
-  status        String      @default("New")
-  scheduledDate DateTime?
-  createdAt     DateTime    @default(now())
-}
-
 // Single-row table (upserted at id 1) — there's only ever one Jira connection
 // for this demo. apiToken is stored in plaintext; see the comment in
 // features/jira/jiraClient.js for the same caveat as the JWT secret.
@@ -59,4 +28,24 @@ model JiraCredential {
   accountId String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Single-row table (upserted at id 1) — same pattern as JiraCredential, one
+// GitHub connection for this demo. token is stored in plaintext, same
+// tradeoff as JiraCredential.apiToken.
+model GitHubCredential {
+  id        Int      @id @default(autoincrement())
+  owner     String
+  repo      String
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Single-row table (upserted at id 1) — determines which connected provider
+// (Jira or GitHub) the Issues, Ticket Optimization, and AI Analysis features
+// read from.
+model IntegrationSettings {
+  id             Int    @id @default(autoincrement())
+  activeProvider String @default("jira")
 }

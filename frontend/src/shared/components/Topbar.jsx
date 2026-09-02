@@ -12,7 +12,9 @@ function getInitials(fullName) {
     .join("");
 }
 
-export default function Topbar() {
+// `icon` + `title`: the compact page-title indicator every page shows here
+// instead of a large in-page heading — icon + bold text, inline, left side.
+export default function Topbar({ icon: Icon, title }) {
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -28,13 +30,18 @@ export default function Topbar() {
   }, []);
 
   return (
-    <header className="h-12 shrink-0 bg-white border-b border-border flex items-center justify-end px-6">
+    <header className="h-12 shrink-0 bg-white border-b border-border flex items-center justify-between px-6">
+      <div className="flex items-center gap-2 min-w-0">
+        {Icon && <Icon className="h-[18px] w-[18px] text-ink shrink-0" strokeWidth={2.25} />}
+        {title && <span className="text-[15px] font-bold text-ink truncate">{title}</span>}
+      </div>
+
       <div className="relative" ref={menuRef}>
         <button
           onClick={() => setMenuOpen((open) => !open)}
           className="flex items-center gap-2.5 rounded-control px-2 py-1.5 hover:bg-slate-100 transition-colors cursor-pointer"
         >
-          <div className="h-8 w-8 rounded-full bg-orange-100 text-primary-hover flex items-center justify-center text-xs font-semibold">
+          <div className="h-8 w-8 rounded-full bg-primary/10 text-primary-hover flex items-center justify-center text-xs font-semibold">
             {getInitials(user?.fullName)}
           </div>
           <div className="text-left leading-tight hidden sm:block">

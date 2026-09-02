@@ -3,7 +3,9 @@ import { ListTree, Loader2, Sparkles } from "lucide-react";
 import AppShell from "../../../shared/components/AppShell.jsx";
 import SearchableSelect from "../../../shared/components/SearchableSelect.jsx";
 import { getJiraProjects, getSprints } from "../../jira/api.js";
-import { runTicketOptimization } from "../api.js";
+import { getGitHubIssues } from "../../github/api.js";
+import { getActiveProvider } from "../../integrations/api.js";
+import { runTicketOptimization, classifyTickets } from "../api.js";
 import OptimizationTicketCard from "../components/OptimizationTicketCard.jsx";
 
 // Presentation config per classification level — color scheme kept distinct
@@ -36,7 +38,97 @@ const LEVELS = [
   },
 ];
 
-export default function TicketOptimization() {
+const GITHUB_STATE_OPTIONS = [
+  { value: "open", label: "Open" },
+  { value: "all", label: "All" },
+];
+
+// Summary cards: the first three carry an L1/L2/L3 tag (same pill style/
+// colors as the level badge on each OptimizationTicketCard and the section
+// heading dots below); the total card doesn't classify into a level, so it
+// gets no tag.
+function summaryCards(results) {
+  return [
+    ...LEVELS.map((level) => ({
+      key: level.key,
+      tag: level.key,
+      badgeClass: level.badgeClass,
+      label: level.summaryLabel,
+      value: results[level.key].count,
+    })),
+    { key: "total", tag: null, label: "Categorized", value: results.total },
+  ];
+}
+
+function OptimizationResults({ running, error, results, emptyHint }) {
+  if (running) {
+    return (
+      <div className="bg-white border border-border rounded-card shadow-card flex flex-col items-center justify-center py-16">
+        <Loader2 className="h-5 w-5 text-ink-muted animate-spin mb-2" />
+        <p className="text-sm text-ink-muted">Classifying tickets...</p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {error && (
+        <p className="mb-4 text-sm text-red-600 bg-red-50 border border-red-100 rounded-control px-3 py-2">
+          {error}
+        </p>
+      )}
+
+      {!results ? (
+        <div className="bg-white border border-border rounded-card shadow-card flex flex-col items-center justify-center py-16 text-center">
+          <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+            <ListTree className="h-5 w-5 text-ink-muted" />
+          </div>
+          <p className="text-sm font-medium text-ink">No analysis yet</p>
+          <p className="text-sm text-ink-muted mt-1">{emptyHint}</p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {summaryCards(results).map((card) => (
+              <div
+                key={card.key}
+                className="bg-white border border-border rounded-card shadow-card p-5 text-center"
+              >
+                {card.tag && (
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold mb-2 ${card.badgeClass}`}
+                  >
+                    {card.tag}
+                  </span>
+                )}
+                <p className="text-3xl font-bold text-ink">{card.value}</p>
+                <p className="text-xs text-ink-muted mt-1">{card.label}</p>
+              </div>
+            ))}
+          </div>
+
+          {LEVELS.filter((level) => results[level.key].count > 0).map((level) => (
+            <section key={level.key}>
+              <div className="flex items-center gap-2 mb-3">
+                <span className={`h-2.5 w-2.5 rounded-full ${level.dotClass}`} />
+                <h2 className="text-sm font-semibold text-ink">
+                  {level.key} — {level.headingLabel} ({results[level.key].count})
+                </h2>
+              </div>
+              <div className="space-y-3">
+                {results[level.key].tickets.map((ticket) => (
+                  <OptimizationTicketCard key={ticket.key} ticket={ticket} level={level} />
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+function JiraTicketOptimization() {
   const [projects, setProjects] = useState([]);
   const [projectFilter, setProjectFilter] = useState("");
 
@@ -88,30 +180,16 @@ export default function TicketOptimization() {
       const data = await runTicketOptimization(projectFilter, sprintFilter);
       setResults(data);
     } catch (err) {
-      setError(err.message || "Ticket optimization is temporarily unavailable.");
+      setError(err.message || "Ticket Triage is temporarily unavailable.");
     } finally {
       setRunning(false);
     }
   }
 
-  const today = new Date().toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-
-  const pageTitle = (
-    <div>
-      <div>Ticket Optimization</div>
-      <p className="text-sm font-normal text-ink-muted mt-1">{today}</p>
-    </div>
-  );
-
   return (
-    <AppShell title={pageTitle}>
+    <AppShell titleIcon={ListTree} title="Ticket Triage">
       <div className="bg-white border border-border rounded-card shadow-card p-4 mb-4">
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <div className="w-full sm:w-56">
             <SearchableSelect
               ariaLabel="Filter by project"
@@ -161,68 +239,119 @@ export default function TicketOptimization() {
             className="inline-flex items-center gap-1.5 rounded-control bg-primary hover:bg-primary-hover text-white text-sm font-medium px-3.5 py-2 transition-colors disabled:opacity-60 disabled:pointer-events-none cursor-pointer"
           >
             {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            {running ? "Running..." : "Run Ticket Optimization"}
+            {running ? "Running..." : "Run Ticket Triage"}
           </button>
         </div>
       </div>
 
-      {error && (
-        <p className="mb-4 text-sm text-red-600 bg-red-50 border border-red-100 rounded-control px-3 py-2">
-          {error}
-        </p>
-      )}
-
-      {running ? (
-        <div className="bg-white border border-border rounded-card shadow-card flex flex-col items-center justify-center py-16">
-          <Loader2 className="h-5 w-5 text-ink-muted animate-spin mb-2" />
-          <p className="text-sm text-ink-muted">Classifying tickets...</p>
-        </div>
-      ) : !results ? (
-        <div className="bg-white border border-border rounded-card shadow-card flex flex-col items-center justify-center py-16 text-center">
-          <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
-            <ListTree className="h-5 w-5 text-ink-muted" />
-          </div>
-          <p className="text-sm font-medium text-ink">No analysis yet</p>
-          <p className="text-sm text-ink-muted mt-1">
-            Select a project and sprint, then run ticket optimization to see results.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {[
-              { label: "Basic / Simple", value: results.L1.count },
-              { label: "Moderate Technical", value: results.L2.count },
-              { label: "Advanced / Critical", value: results.L3.count },
-              { label: "Categorized", value: results.total },
-            ].map((card) => (
-              <div
-                key={card.label}
-                className="bg-white border border-border rounded-card shadow-card p-5 text-center"
-              >
-                <p className="text-3xl font-bold text-ink">{card.value}</p>
-                <p className="text-xs text-ink-muted mt-1">{card.label}</p>
-              </div>
-            ))}
-          </div>
-
-          {LEVELS.filter((level) => results[level.key].count > 0).map((level) => (
-            <section key={level.key}>
-              <div className="flex items-center gap-2 mb-3">
-                <span className={`h-2.5 w-2.5 rounded-full ${level.dotClass}`} />
-                <h2 className="text-sm font-semibold text-ink">
-                  {level.key} — {level.headingLabel} ({results[level.key].count})
-                </h2>
-              </div>
-              <div className="space-y-3">
-                {results[level.key].tickets.map((ticket) => (
-                  <OptimizationTicketCard key={ticket.key} ticket={ticket} level={level} />
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
-      )}
+      <OptimizationResults
+        running={running}
+        error={error}
+        results={results}
+        emptyHint="Select a project and sprint, then run ticket triage to see results."
+      />
     </AppShell>
   );
+}
+
+function GitHubTicketOptimization() {
+  const [stateFilter, setStateFilter] = useState("open");
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState(null);
+  const [results, setResults] = useState(null);
+
+  async function handleRun() {
+    setRunning(true);
+    setError(null);
+    try {
+      const { issues } = await getGitHubIssues(stateFilter);
+      if (issues.length === 0) {
+        setError("No tickets found in the connected repo.");
+        setResults(null);
+        return;
+      }
+
+      // GitHub issue comments aren't fetched here (would be one request per
+      // issue) — classification still works from title/description/status.
+      const tickets = issues.map((issue) => ({
+        key: issue.key,
+        summary: issue.summary,
+        description: issue.description,
+        priority: issue.priority,
+        status: issue.status,
+        project: issue.project,
+        dueDate: issue.dueDate,
+        assignee: issue.assignee || "Unassigned",
+        comments: [],
+      }));
+
+      const data = await classifyTickets(tickets);
+      setResults(data);
+    } catch (err) {
+      setError(err.message || "Ticket Triage is temporarily unavailable.");
+    } finally {
+      setRunning(false);
+    }
+  }
+
+  return (
+    <AppShell titleIcon={ListTree} title="Ticket Triage">
+      <div className="bg-white border border-border rounded-card shadow-card p-4 mb-4">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <select
+            value={stateFilter}
+            onChange={(e) => setStateFilter(e.target.value)}
+            aria-label="Filter by state"
+            className="w-full sm:w-36 rounded-control border border-border px-3 py-2 text-sm text-ink bg-white focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-colors cursor-pointer"
+          >
+            {GITHUB_STATE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+
+          <button
+            type="button"
+            onClick={handleRun}
+            disabled={running}
+            className="inline-flex items-center gap-1.5 rounded-control bg-primary hover:bg-primary-hover text-white text-sm font-medium px-3.5 py-2 transition-colors disabled:opacity-60 disabled:pointer-events-none cursor-pointer"
+          >
+            {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            {running ? "Running..." : "Run Ticket Triage"}
+          </button>
+        </div>
+      </div>
+
+      <OptimizationResults
+        running={running}
+        error={error}
+        results={results}
+        emptyHint="Pick a state, then run ticket triage to see results."
+      />
+    </AppShell>
+  );
+}
+
+export default function TicketOptimization() {
+  const [provider, setProvider] = useState(null);
+
+  useEffect(() => {
+    getActiveProvider()
+      .then((data) => setProvider(data.activeProvider))
+      .catch(() => setProvider("jira"));
+  }, []);
+
+  if (provider === null) {
+    return (
+      <AppShell titleIcon={ListTree} title="Ticket Triage">
+        <div className="bg-white border border-border rounded-card shadow-card flex flex-col items-center justify-center py-16">
+          <Loader2 className="h-5 w-5 text-ink-muted animate-spin mb-2" />
+          <p className="text-sm text-ink-muted">Loading...</p>
+        </div>
+      </AppShell>
+    );
+  }
+
+  return provider === "github" ? <GitHubTicketOptimization /> : <JiraTicketOptimization />;
 }

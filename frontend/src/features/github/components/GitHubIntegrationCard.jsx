@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { CheckCircle2, ExternalLink } from "lucide-react";
-import { getJiraCredentials, saveJiraCredentials } from "../api.js";
+import { CheckCircle2 } from "lucide-react";
+import { getGitHubCredentials, saveGitHubCredentials } from "../api.js";
 
 const inputClass =
   "w-full rounded-control border border-border px-3 py-2 text-sm text-ink placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary";
@@ -9,26 +9,26 @@ const labelClass = "block text-sm font-medium text-ink mb-1.5";
 // `bare`: skip the outer bordered/shadowed card wrapper — used when this is
 // rendered as one section inside Settings' own panel (which already
 // provides the border), rather than as a standalone card.
-export default function JiraIntegrationCard({ bare = false }) {
-  const [siteUrl, setSiteUrl] = useState("");
-  const [email, setEmail] = useState("");
-  const [apiToken, setApiToken] = useState("");
+export default function GitHubIntegrationCard({ bare = false }) {
+  const [owner, setOwner] = useState("");
+  const [repo, setRepo] = useState("");
+  const [token, setToken] = useState("");
   const [connected, setConnected] = useState(false);
-  const [connectedEmail, setConnectedEmail] = useState(null);
-  const [connectedSiteUrl, setConnectedSiteUrl] = useState(null);
+  const [connectedOwner, setConnectedOwner] = useState(null);
+  const [connectedRepo, setConnectedRepo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    getJiraCredentials()
+    getGitHubCredentials()
       .then((creds) => {
         setConnected(creds.connected);
         if (creds.connected) {
-          setConnectedEmail(creds.email);
-          setConnectedSiteUrl(creds.siteUrl);
-          setSiteUrl(creds.siteUrl);
-          setEmail(creds.email);
+          setConnectedOwner(creds.owner);
+          setConnectedRepo(creds.repo);
+          setOwner(creds.owner);
+          setRepo(creds.repo);
         }
       })
       .catch(() => {})
@@ -40,13 +40,13 @@ export default function JiraIntegrationCard({ bare = false }) {
     setSubmitting(true);
     setError(null);
     try {
-      const creds = await saveJiraCredentials({ siteUrl, email, apiToken });
+      const creds = await saveGitHubCredentials({ owner, repo, token });
       setConnected(true);
-      setConnectedEmail(creds.email);
-      setConnectedSiteUrl(creds.siteUrl);
-      setApiToken("");
+      setConnectedOwner(creds.owner);
+      setConnectedRepo(creds.repo);
+      setToken("");
     } catch (err) {
-      setError(err.message || "Failed to connect to Jira.");
+      setError(err.message || "Failed to connect to GitHub.");
     } finally {
       setSubmitting(false);
     }
@@ -55,67 +55,57 @@ export default function JiraIntegrationCard({ bare = false }) {
   const content = (
     <>
       <div className="flex items-center justify-between mb-1">
-        <h2 className="text-sm font-semibold text-ink">Jira Integration</h2>
+        <h2 className="text-sm font-semibold text-ink">GitHub Integration</h2>
         {!loading && connected && (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
             <CheckCircle2 className="h-3.5 w-3.5" />
-            Connected · {connectedSiteUrl}
+            Connected · {connectedOwner}/{connectedRepo}
           </span>
         )}
       </div>
 
-      {!loading && connected && (
-        <p className="text-xs text-ink-muted mb-4">Connected as {connectedEmail}</p>
-      )}
       {loading && <p className="text-xs text-ink-muted mb-4">Loading connection status...</p>}
-      {!loading && !connected && (
-        <p className="text-xs text-ink-muted mb-4">Not connected yet.</p>
-      )}
+      {!loading && !connected && <p className="text-xs text-ink-muted mb-4">Not connected yet.</p>}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="jiraSiteUrl" className={labelClass}>
-            Jira Site URL
+          <label htmlFor="githubOwner" className={labelClass}>
+            Owner
           </label>
           <input
-            id="jiraSiteUrl"
-            value={siteUrl}
-            onChange={(e) => setSiteUrl(e.target.value)}
+            id="githubOwner"
+            value={owner}
+            onChange={(e) => setOwner(e.target.value)}
             className={inputClass}
-            placeholder="yourcompany.atlassian.net"
+            placeholder="octocat"
           />
         </div>
 
         <div>
-          <label htmlFor="jiraEmail" className={labelClass}>
-            Email
+          <label htmlFor="githubRepo" className={labelClass}>
+            Repo
           </label>
           <input
-            id="jiraEmail"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            id="githubRepo"
+            value={repo}
+            onChange={(e) => setRepo(e.target.value)}
             className={inputClass}
-            placeholder="you@yourcompany.com"
+            placeholder="hello-world"
           />
         </div>
 
         <div>
-          <label htmlFor="jiraApiToken" className={labelClass}>
-            API Token
+          <label htmlFor="githubToken" className={labelClass}>
+            Personal Access Token
           </label>
           <input
-            id="jiraApiToken"
+            id="githubToken"
             type="password"
-            value={apiToken}
-            onChange={(e) => setApiToken(e.target.value)}
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
             className={inputClass}
-            placeholder={connected ? "Leave blank to keep current token" : "Paste your API token"}
+            placeholder={connected ? "Leave blank to keep current token" : "Paste your personal access token"}
           />
-          <p className="text-xs text-ink-muted mt-1.5 flex items-center gap-1">
-            <ExternalLink className="h-3 w-3 shrink-0" />
-            Generate an API token from your Atlassian account settings.
-          </p>
         </div>
 
         {error && (

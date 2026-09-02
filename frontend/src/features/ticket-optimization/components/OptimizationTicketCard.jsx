@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Calendar, CircleDot, Flag, Folder, User } from "lucide-react";
-import { formatShortDate } from "../../jira/dateFormat.js";
+import { formatShortDate } from "../../issues/dateFormat.js";
+import { issueDetailPath } from "../../issues/issueRoute.js";
 
 export default function OptimizationTicketCard({ ticket, level }) {
   const navigate = useNavigate();
@@ -8,7 +9,7 @@ export default function OptimizationTicketCard({ ticket, level }) {
 
   return (
     <div
-      onClick={() => navigate(`/admin/issues/${ticket.key}`)}
+      onClick={() => navigate(issueDetailPath(ticket.key))}
       className={`bg-white border border-border ${level.borderClass} border-l-4 rounded-card shadow-card hover:shadow-card-hover transition-shadow duration-150 p-4 cursor-pointer`}
     >
       <div className="flex items-start justify-between gap-3">

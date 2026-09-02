@@ -1,36 +1,34 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  BarChart3,
-  CheckCircle2,
-  ClipboardList,
   Eye,
   EyeOff,
+  GitBranch,
+  Layers,
+  ListTree,
   Lock,
   LogIn,
-  Quote,
+  Ticket,
   User,
-  Users,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuth } from "../auth.jsx";
-import LoginIllustration from "../components/LoginIllustration.jsx";
 
 const FEATURES = [
   {
-    icon: CheckCircle2,
-    title: "Efficient",
-    description: "Automate and simplify every step.",
+    icon: Layers,
+    title: "Unified",
+    description: "Jira and GitHub in one place.",
   },
   {
-    icon: Users,
-    title: "Collaborative",
-    description: "Empower your team to do more.",
+    icon: ListTree,
+    title: "Classified",
+    description: "AI-sorted by complexity.",
   },
   {
-    icon: BarChart3,
-    title: "Insightful",
-    description: "Make data-driven decisions.",
+    icon: GitBranch,
+    title: "Traceable",
+    description: "Linked to real commits and PRs.",
   },
 ];
 
@@ -44,11 +42,11 @@ function DotGrid() {
   return (
     <svg
       viewBox="0 0 100 100"
-      className="absolute top-8 right-8 w-24 h-24 opacity-40 hidden xl:block"
+      className="absolute top-8 right-8 w-24 h-24 opacity-40 hidden xl:block text-primary"
       aria-hidden="true"
     >
       {dots.map(({ cx, cy }) => (
-        <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r="2.5" fill="#F97316" />
+        <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r="2.5" fill="currentColor" />
       ))}
     </svg>
   );
@@ -85,46 +83,32 @@ export default function Login() {
   return (
     <div className="h-screen overflow-hidden flex">
       {/* Left branding panel */}
-      <div className="hidden lg:flex lg:w-1/2 h-full relative overflow-hidden bg-gradient-to-br from-orange-50 via-orange-100 to-amber-200/70 flex-col px-10 xl:px-14 py-6">
+      <div className="hidden lg:flex lg:w-1/2 h-full relative overflow-hidden bg-gradient-to-br from-indigo-50 via-indigo-100 to-violet-200/70 flex-col justify-center px-10 xl:px-14 py-6">
         <DotGrid />
 
-        <div className="shrink-0 flex items-center gap-3">
+        <div className="flex items-center gap-3">
           <div className="h-11 w-11 rounded-xl bg-primary flex items-center justify-center shadow-card shrink-0">
-            <ClipboardList className="h-6 w-6 text-white" strokeWidth={2.25} />
+            <Ticket className="h-6 w-6 text-white" strokeWidth={2.25} />
           </div>
           <div>
-            <p className="text-lg font-bold text-ink leading-tight">WorkFlow</p>
-            <p className="text-sm text-ink-muted">Work order management, done right</p>
+            <p className="text-lg font-bold text-ink leading-tight">Ticketing System</p>
+            <p className="text-sm text-ink-muted">AI-powered ticket resolution</p>
           </div>
         </div>
 
-        <div className="shrink-0 mt-5">
+        <div className="mt-8">
           <h1 className="text-3xl xl:text-4xl font-bold text-ink leading-tight">
-            Streamline work.
+            Triage faster.
             <br />
-            <span className="text-primary">Deliver excellence.</span>
+            <span className="text-primary">Resolve smarter.</span>
           </h1>
           <div className="w-14 h-1 bg-primary rounded-full mt-3 mb-3" />
           <p className="text-ink-muted max-w-sm">
-            Organize tasks, empower teams, and delight customers.
+            Pull tickets from Jira and GitHub, classify them, and resolve them faster with AI.
           </p>
         </div>
 
-        <div className="shrink-0 mt-4 bg-white/60 border border-orange-200/70 rounded-2xl p-4 max-w-sm">
-          <Quote className="h-5 w-5 text-primary" fill="currentColor" strokeWidth={0} />
-          <p className="text-ink text-sm leading-snug mt-2">
-            &lsquo;The secret of getting ahead is getting started.&rsquo;
-          </p>
-          <p className="text-primary text-sm font-medium mt-2">— Mark Twain</p>
-        </div>
-
-        <div className="flex-1 min-h-0 flex items-center justify-center py-2">
-          <div className="h-full max-w-sm w-full mx-auto">
-            <LoginIllustration />
-          </div>
-        </div>
-
-        <div className="shrink-0 grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-4 mt-16">
           {FEATURES.map(({ icon: Icon, title, description }) => (
             <div key={title}>
               <Icon className="h-5 w-5 text-primary mb-1.5" strokeWidth={2.25} />
@@ -136,15 +120,15 @@ export default function Login() {
       </div>
 
       {/* Right sign-in panel */}
-      <div className="flex-1 h-full overflow-y-auto relative flex items-center justify-center bg-surface px-4 py-6">
+      <div className="flex-1 h-full overflow-y-auto flex items-center justify-center bg-surface px-4 py-6">
         <div className="w-full max-w-md">
           <div className="bg-white border border-border rounded-3xl shadow-card p-8 sm:p-10">
             <div className="flex flex-col items-center text-center mb-6">
               <div className="h-14 w-14 rounded-2xl bg-primary flex items-center justify-center shadow-card mb-4">
-                <ClipboardList className="h-7 w-7 text-white" strokeWidth={2.25} />
+                <Ticket className="h-7 w-7 text-white" strokeWidth={2.25} />
               </div>
               <h2 className="text-2xl font-bold text-ink">Welcome back!</h2>
-              <p className="text-sm text-ink-muted mt-1">Sign in to continue to WorkFlow</p>
+              <p className="text-sm text-ink-muted mt-1">Sign in to continue to Ticketing System</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -225,18 +209,8 @@ export default function Login() {
                 {submitting ? "Signing in..." : "Sign in"}
               </button>
             </form>
-
-            <div className="mt-6 bg-slate-50 border border-border rounded-xl px-4 py-3 text-xs text-ink-muted space-y-1">
-              <p className="font-medium text-ink">Demo credentials</p>
-              <p>Administrator — admin / Admin@123</p>
-              <p>Dispatcher — dispatcher / Dispatch@123</p>
-            </div>
           </div>
         </div>
-
-        <p className="absolute bottom-6 inset-x-0 text-center text-xs text-ink-muted">
-          © 2025 WorkFlow. All rights reserved.
-        </p>
       </div>
     </div>
   );

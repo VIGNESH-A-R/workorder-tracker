@@ -1,6 +1,6 @@
 ---
 name: Demo feature ticket
-about: A scoped feature or fix for the WorkFlow demo app
+about: A scoped feature or fix for the Ticketing System demo app
 title: ""
 labels: ""
 assignees: ""

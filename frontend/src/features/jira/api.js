@@ -37,12 +37,3 @@ export function getJiraIssues({ project, status, search, sprint, pageToken } = {
 export function getIssueDetail(key) {
   return request(`/jira/issues/${encodeURIComponent(key)}`);
 }
-
-// Sends the already-loaded issue detail object as-is — the backend uses it
-// directly rather than re-fetching it from Jira.
-export function getIssueAIAnalysis(key, issue) {
-  return request(`/jira/issues/${encodeURIComponent(key)}/ai-analysis`, {
-    method: "POST",
-    body: JSON.stringify({ issue }),
-  });
-}

@@ -1,6 +1,6 @@
-import OpenAI from "openai";
 import {
   JiraApiError,
+  addComment,
   fetchBoards,
   fetchIssue,
   fetchProjects,
@@ -9,6 +9,7 @@ import {
   searchIssues,
   testConnection,
 } from "./jiraClient.js";
+import { classifyTickets } from "../ticket-optimization/ticketOptimizationService.js";
 
 const CREDENTIALS_ID = 1; // single-row table — see prisma/schema.prisma
 const ISSUES_PAGE_SIZE = 25;
@@ -63,6 +64,15 @@ const issueSchema = {
   },
 };
 
+const commentSchema = {
+  type: "object",
+  properties: {
+    author: { type: "string" },
+    body: { type: "string" },
+    created: { type: ["string", "null"] },
+  },
+};
+
 const issueDetailSchema = {
   type: "object",
   properties: {
@@ -77,37 +87,15 @@ const issueDetailSchema = {
     created: { type: ["string", "null"] },
     updated: { type: ["string", "null"] },
     dueDate: { type: ["string", "null"] },
-    comments: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          author: { type: "string" },
-          body: { type: "string" },
-          created: { type: ["string", "null"] },
-        },
-      },
-    },
+    comments: { type: "array", items: commentSchema },
   },
 };
 
-// The frontend sends the full issue detail object exactly as it already has
-// it loaded (from GET /issues/:key) — this route never re-fetches it from
-// Jira, so the body schema is deliberately permissive on shape;
-// summary/status presence is checked by hand in the route instead of via a
-// stricter JSON schema.
-const aiAnalysisBodySchema = {
+const addCommentBodySchema = {
   type: "object",
-  required: ["issue"],
+  required: ["body"],
   properties: {
-    issue: { type: "object" },
-  },
-};
-
-const aiAnalysisResponseSchema = {
-  type: "object",
-  properties: {
-    html: { type: "string" },
+    body: { type: "string" },
   },
 };
 
@@ -157,99 +145,6 @@ const ticketOptimizationResponseSchema = {
     total: { type: "integer" },
   },
 };
-
-function buildAiAnalysisPrompt(issue) {
-  return `IMPORTANT:
-Do NOT think step-by-step.
-Do NOT output reasoning.
-Do NOT output analysis.
-Do NOT output <think> tags.
-Respond ONLY with the final HTML output. No markdown, no explanation.
-
-You are an AI ticket analysis assistant.
-
-Analyze the given ticket JSON and generate a concise, professional summary
-formatted as HTML styled with Tailwind CSS utility classes, that can be directly
-rendered inside an existing web app (Tailwind is already loaded on the page).
-
-Your summary must identify:
-- Main task or issue
-- Current status
-- Priority level
-- Assignee (or note if unassigned)
-- Reporter
-- Important blockers, failures, escalations, or risks
-- Recent activity (from comments, if present)
-- Due date (flag if it's in the past and still not resolved)
-
-Rules:
-- Use Tailwind utility classes for styling (rounded-lg, border, shadow-sm, p-4,
-  bg-slate-50, text-slate-900, and small colored pill/badge spans for status and
-  priority — bg-red-100 text-red-700 for high priority, bg-amber-100 text-amber-700
-  for medium, bg-slate-100 text-slate-600 for low, similar tones for status).
-  Do NOT use Bootstrap classes (card, badge, list-group, etc.) — they are not
-  available on this page.
-- Keep content short and human-readable.
-- Focus only on important operational details. Ignore internal IDs and metadata.
-- Mention deployment failures, escalations, approvals, delays, or dependencies if
-  present in the description or comments.
-- Output ONLY the HTML fragment (no <html>, <head>, or <body> tags — just a <div>
-  with Tailwind classes).
-- Maximum 12 content lines.
-
-Expected output structure (example):
-<div class="rounded-lg border border-slate-200 shadow-sm bg-white">
-  <div class="px-4 py-2 bg-orange-500 text-white rounded-t-lg font-semibold">Issue Title</div>
-  <div class="p-4">
-    <p class="mb-2">
-      <span class="inline-block rounded-full px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700">High Priority</span>
-      <span class="inline-block rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700">In Progress</span>
-    </p>
-    <ul class="divide-y divide-slate-100 text-sm">
-      <li class="py-1.5"><strong>Assignee:</strong> ...</li>
-      <li class="py-1.5"><strong>Reporter:</strong> ...</li>
-      <li class="py-1.5"><strong>Summary:</strong> ...</li>
-      <li class="py-1.5"><strong>Risks/Blockers:</strong> ...</li>
-      <li class="py-1.5"><strong>Recent Activity:</strong> ...</li>
-    </ul>
-  </div>
-</div>
-
-Here is the ticket JSON:
-${JSON.stringify(issue, null, 2)}
-
-Output:`;
-}
-
-function buildClassificationPrompt(payload) {
-  return `You are a support ticket classification assistant.
-
-Categorize the tickets into:
-- L1
-- L2
-- L3
-
-Definitions:
-- L1 = basic/simple issue or simple feature development LIKE "issue in login ui"
-- L2 = moderate technical issue
-- L3 = advanced/critical issue
-
-Rules:
-- If L1, provide one-line solution.
-- If L2/L3, no solution needed.
-- If a ticket is closed, DO NOT categorize it.
-
-Return ONLY VALID JSON in this format:
-
-{
-  "L1": { "count": 0, "tickets": [{ "id": "ticket_id", "solution": "solution text" }] },
-  "L2": { "count": 0, "tickets": [{ "id": "ticket_id" }] },
-  "L3": { "count": 0, "tickets": [{ "id": "ticket_id" }] }
-}
-
-Tickets:
-${JSON.stringify(payload, null, 2)}`;
-}
 
 // Escapes a value dropped into a double-quoted JQL string literal.
 function jqlEscape(value) {
@@ -326,6 +221,19 @@ function adfToPlainText(doc) {
     .trim();
 }
 
+// Inverse of adfToPlainText, for posting a new comment — wraps a plain
+// string as the minimal ADF document Jira's add-comment endpoint expects:
+// one paragraph node containing one text node. Not a general plain-text ->
+// ADF converter (no line-break/list handling), just enough for a single
+// comment composer's single-line-or-newlines input.
+function plainTextToAdf(text) {
+  return {
+    type: "doc",
+    version: 1,
+    content: [{ type: "paragraph", content: [{ type: "text", text }] }],
+  };
+}
+
 function mapIssueDetail(issue) {
   const fields = issue.fields || {};
   return {
@@ -349,9 +257,9 @@ function mapIssueDetail(issue) {
 }
 
 // Fields requested from Jira's search/jql endpoint for ticket optimization.
-// "project" isn't strictly needed for classification, but is included so the
-// display version (mapOptimizedTicketDisplay) can attribute each ticket back
-// to its project name without a second fetch.
+// "project" isn't strictly needed for classification, but is included so
+// mapIssueForOptimization can attribute each ticket back to its project name
+// without a second fetch.
 const TICKET_OPTIMIZATION_FIELDS = "summary,description,priority,status,duedate,assignee,comment,project";
 
 // Always bounded by project AND sprint (both required in the request body,
@@ -364,41 +272,23 @@ function buildTicketOptimizationJql({ project, sprint }) {
   return `project = "${jqlEscape(project)}" AND sprint = ${sprint} AND status != "Done" ORDER BY updated DESC`;
 }
 
-// Minimized ticket shape sent to the LLM — only what's needed to classify,
-// to keep token usage down across potentially large ticket batches.
-function mapOptimizedTicketForLLM(issue) {
-  const fields = issue.fields || {};
-  return {
-    id: issue.key,
-    title: fields.summary || "",
-    description: adfToPlainText(fields.description),
-    priority: fields.priority?.name || null,
-    state: fields.status?.name || "",
-    comments: (fields.comment?.comments || []).map((comment) => adfToPlainText(comment.body)),
-  };
-}
-
-// Full display shape re-attached after classification so the frontend can
-// render results without a second fetch.
-function mapOptimizedTicketDisplay(issue) {
+// Maps a fetched Jira issue to the shared, provider-agnostic shape consumed
+// by ticket-optimization/ticketOptimizationService.js's classifyTickets —
+// same idea as mapIssueDetail, but including the comment bodies
+// classification needs.
+function mapIssueForOptimization(issue) {
   const fields = issue.fields || {};
   return {
     key: issue.key,
     summary: fields.summary || "",
-    project: fields.project?.name || fields.project?.key || "",
+    description: adfToPlainText(fields.description),
     priority: fields.priority?.name || null,
     status: fields.status?.name || "",
+    project: fields.project?.name || fields.project?.key || "",
     dueDate: fields.duedate || null,
     assignee: fields.assignee?.displayName || "Unassigned",
+    comments: (fields.comment?.comments || []).map((comment) => adfToPlainText(comment.body)),
   };
-}
-
-function chunkArray(items, size) {
-  const chunks = [];
-  for (let i = 0; i < items.length; i += size) {
-    chunks.push(items.slice(i, i + size));
-  }
-  return chunks;
 }
 
 // Caps how many `mapper` calls are in flight at once, instead of firing all
@@ -731,34 +621,40 @@ export default async function jiraRoutes(fastify) {
   );
 
   fastify.post(
-    "/issues/:key/ai-analysis",
-    { schema: { body: aiAnalysisBodySchema, response: { 200: aiAnalysisResponseSchema } } },
+    "/issues/:key/comments",
+    { schema: { body: addCommentBodySchema, response: { 200: commentSchema } } },
     async (request, reply) => {
-      const { issue } = request.body;
-      if (!issue?.summary || !issue?.status) {
-        return reply.code(400).send({ error: "issue must include at least a summary and status." });
+      const creds = await getCredentials();
+      if (!creds) {
+        return reply
+          .code(400)
+          .send({ error: "Jira is not connected yet. Add your credentials in Settings." });
       }
 
-      const client = new OpenAI({
-        apiKey: process.env.AI_GATEWAY_API_KEY || "not-needed",
-        baseURL: process.env.AI_GATEWAY_BASE_URL,
-      });
+      const text = request.body.body.trim();
+      if (!text) {
+        return reply.code(400).send({ error: "Comment text is required." });
+      }
 
       try {
-        const completion = await client.chat.completions.create({
-          model: process.env.AI_GATEWAY_MODEL || "gpt-4o-mini",
-          messages: [{ role: "user", content: buildAiAnalysisPrompt(issue) }],
-        });
-
-        const raw = completion.choices[0].message.content || "";
-        // Defensive strip — the prompt already forbids <think> blocks, but
-        // some models emit them anyway.
-        const html = raw.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
-
-        return { html };
+        const comment = await addComment(
+          creds.siteUrl,
+          creds.email,
+          creds.apiToken,
+          request.params.key,
+          plainTextToAdf(text)
+        );
+        return {
+          author: comment.author?.displayName || "Unknown",
+          body: adfToPlainText(comment.body),
+          created: comment.created || null,
+        };
       } catch (err) {
-        request.log.warn({ err }, "AI gateway call failed for issue ai-analysis");
-        return reply.code(502).send({ error: "AI analysis is temporarily unavailable." });
+        if (err instanceof JiraApiError && err.status === 404) {
+          return reply.code(404).send({ error: `Issue ${request.params.key} was not found.` });
+        }
+        const message = err instanceof JiraApiError ? err.message : "Failed to reach Jira.";
+        return reply.code(502).send({ error: message });
       }
     }
   );
@@ -810,75 +706,12 @@ export default async function jiraRoutes(fastify) {
         return reply.code(400).send({ error: "No tickets found for the selected project/sprint." });
       }
 
-      const displayByKey = new Map(issues.map((issue) => [issue.key, mapOptimizedTicketDisplay(issue)]));
-      const batches = chunkArray(issues.map(mapOptimizedTicketForLLM), 25);
-
-      const client = new OpenAI({
-        apiKey: process.env.AI_GATEWAY_API_KEY || "not-needed",
-        baseURL: process.env.AI_GATEWAY_BASE_URL,
-      });
-
-      const batchResults = await Promise.all(
-        batches.map(async (batch, index) => {
-          try {
-            const completion = await client.chat.completions.create({
-              model: process.env.AI_GATEWAY_MODEL || "gpt-4o-mini",
-              messages: [{ role: "user", content: buildClassificationPrompt(batch) }],
-              response_format: { type: "json_object" },
-            });
-            return JSON.parse((completion.choices[0].message.content || "{}").trim());
-          } catch (err) {
-            request.log.warn(
-              { err, batchIndex: index },
-              "Ticket optimization batch failed to classify or parse; skipping its results"
-            );
-            return null;
-          }
-        })
-      );
-
-      if (batchResults.every((result) => result === null)) {
+      try {
+        return await classifyTickets(issues.map(mapIssueForOptimization), { log: request.log });
+      } catch (err) {
+        request.log.warn({ err }, "Ticket optimization failed to classify");
         return reply.code(502).send({ error: "AI analysis is temporarily unavailable." });
       }
-
-      const merged = { L1: [], L2: [], L3: [] };
-      for (const result of batchResults) {
-        if (!result) continue;
-        for (const level of ["L1", "L2", "L3"]) {
-          const tickets = result[level]?.tickets;
-          if (Array.isArray(tickets)) merged[level].push(...tickets);
-        }
-      }
-
-      // Re-attach each classified ticket's full display fields, matched by
-      // id/key. A classified id the model hallucinated (not among the
-      // tickets we actually sent) is dropped rather than surfaced broken.
-      function attachDisplay(entries) {
-        return entries
-          .map((entry) => {
-            const display = displayByKey.get(entry.id);
-            if (!display) {
-              request.log.warn(
-                { ticketId: entry.id },
-                "Classified ticket id not found among fetched tickets; skipping"
-              );
-              return null;
-            }
-            return entry.solution ? { ...display, solution: entry.solution } : display;
-          })
-          .filter((ticket) => ticket !== null);
-      }
-
-      const L1 = attachDisplay(merged.L1);
-      const L2 = attachDisplay(merged.L2);
-      const L3 = attachDisplay(merged.L3);
-
-      return {
-        L1: { count: L1.length, tickets: L1 },
-        L2: { count: L2.length, tickets: L2 },
-        L3: { count: L3.length, tickets: L3 },
-        total: L1.length + L2.length + L3.length,
-      };
     }
   );
 }
