@@ -70,3 +70,4 @@ cd frontend && npm run dev
 Every change starts from a GitHub Issue and lands via a Pull Request that
 passes CI (`.github/workflows/test.yml`) — never commit directly to `main`.
 See the "Development Loop" section in `CLAUDE.md` for the full workflow.
+
