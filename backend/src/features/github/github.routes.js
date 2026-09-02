@@ -67,11 +67,14 @@ const addCommentBodySchema = {
 const devActivityResponseSchema = {
   type: "object",
   properties: {
-    branch: {
-      type: ["object", "null"],
-      properties: {
-        name: { type: "string" },
-        url: { type: "string" },
+    branches: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          url: { type: "string" },
+        },
       },
     },
     commits: {
@@ -372,13 +375,13 @@ export default async function githubRoutes(fastify) {
           fetchPullRequests(creds.owner, creds.repo, creds.token, { state: "all", perPage: 50 }),
         ]);
 
-        const matchedBranch = branches.find((b) => containsWholeNumberToken(b.name, number));
-        const branch = matchedBranch
-          ? {
-              name: matchedBranch.name,
-              url: `https://github.com/${creds.owner}/${creds.repo}/tree/${matchedBranch.name}`,
-            }
-          : null;
+        // An issue can have more than one branch or PR pointed at it (e.g. a
+        // redo, or split work) — match ALL of them, not just the first.
+        const matchedBranches = branches.filter((b) => containsWholeNumberToken(b.name, number));
+        const branchList = matchedBranches.map((b) => ({
+          name: b.name,
+          url: `https://github.com/${creds.owner}/${creds.repo}/tree/${b.name}`,
+        }));
 
         const matchingPulls = rawPulls.filter((pr) => pullRequestReferencesIssue(pr, number));
         const pullRequests = matchingPulls.map((pr) => ({
@@ -390,26 +393,43 @@ export default async function githubRoutes(fastify) {
           createdAt: pr.created_at || null,
         }));
 
-        // Once a PR exists, its own commits are the stable source of truth —
-        // comparing live against main goes to zero the moment the PR merges,
-        // since its commits become part of main's own history at that point.
-        // Only fall back to the live compare (in-progress work, no PR yet)
-        // when there's no matching PR to pull commits from.
-        let commits = [];
-        if (matchingPulls.length > 0) {
-          const rawCommits = await fetchPullRequestCommits(
-            creds.owner,
-            creds.repo,
-            creds.token,
-            matchingPulls[0].number
-          );
-          commits = rawCommits.map(mapCommit);
-        } else if (branch) {
-          const compareData = await compareCommits(creds.owner, creds.repo, creds.token, "main", branch.name);
-          commits = (compareData.commits || []).map(mapCommit);
-        }
+        // Every matching PR's own commits are stable regardless of merge
+        // status — pull commits from ALL of them, not just the first. A
+        // matching branch that doesn't have a PR of its own yet (still in
+        // progress) falls back to comparing it live against main; a branch
+        // that already has a PR skips that, since the PR's own commit list
+        // already covers it and comparing a post-merge branch against main
+        // would just go to zero (the original bug this was built to avoid).
+        const prHeadRefs = new Set(matchingPulls.map((pr) => pr.head?.ref).filter(Boolean));
+        const branchesWithoutPr = matchedBranches.filter((b) => !prHeadRefs.has(b.name));
 
-        return { branch, commits, pullRequests };
+        const [prCommitLists, compareCommitLists] = await Promise.all([
+          Promise.all(
+            matchingPulls.map((pr) => fetchPullRequestCommits(creds.owner, creds.repo, creds.token, pr.number))
+          ),
+          Promise.all(
+            branchesWithoutPr.map((b) =>
+              compareCommits(creds.owner, creds.repo, creds.token, "main", b.name).then(
+                (data) => data.commits || []
+              )
+            )
+          ),
+        ]);
+
+        // The same commit can reach us via more than one path (e.g. a branch
+        // whose PR was already picked up, then also matched again on a
+        // rename) — de-dupe by (short) sha, then sort oldest-first, matching
+        // the ordering each individual source already returns on its own.
+        const commitsBySha = new Map();
+        for (const rawCommit of [...prCommitLists.flat(), ...compareCommitLists.flat()]) {
+          const mapped = mapCommit(rawCommit);
+          if (!commitsBySha.has(mapped.sha)) commitsBySha.set(mapped.sha, mapped);
+        }
+        const commits = [...commitsBySha.values()].sort(
+          (a, b) => new Date(a.date || 0) - new Date(b.date || 0)
+        );
+
+        return { branches: branchList, commits, pullRequests };
       } catch (err) {
         const message = err instanceof GitHubApiError ? err.message : "Failed to reach GitHub.";
         return reply.code(502).send({ error: message });

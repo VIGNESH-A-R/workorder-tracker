@@ -81,19 +81,29 @@ export default function DevActivityCard({ identifier }) {
         <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-control px-3 py-2">
           {error}
         </p>
-      ) : !activity?.branch ? (
+      ) : !activity ||
+        (activity.branches.length === 0 &&
+          activity.commits.length === 0 &&
+          activity.pullRequests.length === 0) ? (
         <p className="text-sm text-ink-muted">No development activity yet for this issue.</p>
       ) : (
         <div className="space-y-5">
-          <a
-            href={activity.branch.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-sm font-medium text-ink hover:text-primary-hover transition-colors"
-          >
-            <GitBranch className="h-4 w-4 text-ink-muted" />
-            {activity.branch.name}
-          </a>
+          {activity.branches.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              {activity.branches.map((branch) => (
+                <a
+                  key={branch.name}
+                  href={branch.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-sm font-medium text-ink hover:text-primary-hover transition-colors"
+                >
+                  <GitBranch className="h-4 w-4 text-ink-muted" />
+                  {branch.name}
+                </a>
+              ))}
+            </div>
+          )}
 
           {activity.commits.length > 0 && (
             <div>
