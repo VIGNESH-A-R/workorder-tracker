@@ -1,6 +1,7 @@
-# WorkFlow — Work Order Tracker
+# Ticketing System
 
-A full-stack demo app for tracking field service work orders, behind a login.
+A full-stack demo app for pulling tickets from Jira or GitHub, classifying and
+analyzing them with AI, behind a login.
 
 - **Backend:** Node.js + Fastify + Prisma (SQLite) + JWT auth
 - **Frontend:** React + Vite + React Router + Tailwind CSS
@@ -21,8 +22,8 @@ npm run dev
 The API runs at http://localhost:8000. Swagger docs are at
 http://localhost:8000/docs. `npx prisma db push` creates the SQLite file
 (`prisma/dev.db`) from `prisma/schema.prisma` — no migration files needed for
-this scaffold. `npm run seed` is idempotent: it only inserts demo data into
-empty tables.
+this scaffold. `npm run seed` is idempotent: it only inserts the demo users
+below if they don't already exist.
 
 ## Frontend setup
 

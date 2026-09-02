@@ -6,7 +6,10 @@ const inputClass =
   "w-full rounded-control border border-border px-3 py-2 text-sm text-ink placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary";
 const labelClass = "block text-sm font-medium text-ink mb-1.5";
 
-export default function JiraIntegrationCard() {
+// `bare`: skip the outer bordered/shadowed card wrapper — used when this is
+// rendered as one section inside Settings' own panel (which already
+// provides the border), rather than as a standalone card.
+export default function JiraIntegrationCard({ bare = false }) {
   const [siteUrl, setSiteUrl] = useState("");
   const [email, setEmail] = useState("");
   const [apiToken, setApiToken] = useState("");
@@ -49,8 +52,8 @@ export default function JiraIntegrationCard() {
     }
   }
 
-  return (
-    <div className="bg-white border border-border rounded-card shadow-card p-6">
+  const content = (
+    <>
       <div className="flex items-center justify-between mb-1">
         <h2 className="text-sm font-semibold text-ink">Jira Integration</h2>
         {!loading && connected && (
@@ -131,6 +134,10 @@ export default function JiraIntegrationCard() {
           </button>
         </div>
       </form>
-    </div>
+    </>
   );
+
+  if (bare) return content;
+
+  return <div className="bg-white border border-border rounded-card shadow-card p-6">{content}</div>;
 }

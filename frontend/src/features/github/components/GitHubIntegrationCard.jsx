@@ -6,7 +6,10 @@ const inputClass =
   "w-full rounded-control border border-border px-3 py-2 text-sm text-ink placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary";
 const labelClass = "block text-sm font-medium text-ink mb-1.5";
 
-export default function GitHubIntegrationCard() {
+// `bare`: skip the outer bordered/shadowed card wrapper — used when this is
+// rendered as one section inside Settings' own panel (which already
+// provides the border), rather than as a standalone card.
+export default function GitHubIntegrationCard({ bare = false }) {
   const [owner, setOwner] = useState("");
   const [repo, setRepo] = useState("");
   const [token, setToken] = useState("");
@@ -49,8 +52,8 @@ export default function GitHubIntegrationCard() {
     }
   }
 
-  return (
-    <div className="bg-white border border-border rounded-card shadow-card p-6">
+  const content = (
+    <>
       <div className="flex items-center justify-between mb-1">
         <h2 className="text-sm font-semibold text-ink">GitHub Integration</h2>
         {!loading && connected && (
@@ -121,6 +124,10 @@ export default function GitHubIntegrationCard() {
           </button>
         </div>
       </form>
-    </div>
+    </>
   );
+
+  if (bare) return content;
+
+  return <div className="bg-white border border-border rounded-card shadow-card p-6">{content}</div>;
 }

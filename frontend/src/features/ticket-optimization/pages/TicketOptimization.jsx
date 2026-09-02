@@ -43,22 +43,21 @@ const GITHUB_STATE_OPTIONS = [
   { value: "all", label: "All" },
 ];
 
-function todayLabel() {
-  return new Date().toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-function pageTitleWithDate(title) {
-  return (
-    <div>
-      <div>{title}</div>
-      <p className="text-sm font-normal text-ink-muted mt-1">{todayLabel()}</p>
-    </div>
-  );
+// Summary cards: the first three carry an L1/L2/L3 tag (same pill style/
+// colors as the level badge on each OptimizationTicketCard and the section
+// heading dots below); the total card doesn't classify into a level, so it
+// gets no tag.
+function summaryCards(results) {
+  return [
+    ...LEVELS.map((level) => ({
+      key: level.key,
+      tag: level.key,
+      badgeClass: level.badgeClass,
+      label: level.summaryLabel,
+      value: results[level.key].count,
+    })),
+    { key: "total", tag: null, label: "Categorized", value: results.total },
+  ];
 }
 
 function OptimizationResults({ running, error, results, emptyHint }) {
@@ -90,16 +89,18 @@ function OptimizationResults({ running, error, results, emptyHint }) {
       ) : (
         <div className="space-y-6">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {[
-              { label: "Basic / Simple", value: results.L1.count },
-              { label: "Moderate Technical", value: results.L2.count },
-              { label: "Advanced / Critical", value: results.L3.count },
-              { label: "Categorized", value: results.total },
-            ].map((card) => (
+            {summaryCards(results).map((card) => (
               <div
-                key={card.label}
+                key={card.key}
                 className="bg-white border border-border rounded-card shadow-card p-5 text-center"
               >
+                {card.tag && (
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold mb-2 ${card.badgeClass}`}
+                  >
+                    {card.tag}
+                  </span>
+                )}
                 <p className="text-3xl font-bold text-ink">{card.value}</p>
                 <p className="text-xs text-ink-muted mt-1">{card.label}</p>
               </div>
@@ -179,16 +180,16 @@ function JiraTicketOptimization() {
       const data = await runTicketOptimization(projectFilter, sprintFilter);
       setResults(data);
     } catch (err) {
-      setError(err.message || "Ticket optimization is temporarily unavailable.");
+      setError(err.message || "Ticket Triage is temporarily unavailable.");
     } finally {
       setRunning(false);
     }
   }
 
   return (
-    <AppShell title={pageTitleWithDate("Ticket Optimization")}>
+    <AppShell titleIcon={ListTree} title="Ticket Triage">
       <div className="bg-white border border-border rounded-card shadow-card p-4 mb-4">
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <div className="w-full sm:w-56">
             <SearchableSelect
               ariaLabel="Filter by project"
@@ -238,7 +239,7 @@ function JiraTicketOptimization() {
             className="inline-flex items-center gap-1.5 rounded-control bg-primary hover:bg-primary-hover text-white text-sm font-medium px-3.5 py-2 transition-colors disabled:opacity-60 disabled:pointer-events-none cursor-pointer"
           >
             {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            {running ? "Running..." : "Run Ticket Optimization"}
+            {running ? "Running..." : "Run Ticket Triage"}
           </button>
         </div>
       </div>
@@ -247,7 +248,7 @@ function JiraTicketOptimization() {
         running={running}
         error={error}
         results={results}
-        emptyHint="Select a project and sprint, then run ticket optimization to see results."
+        emptyHint="Select a project and sprint, then run ticket triage to see results."
       />
     </AppShell>
   );
@@ -287,16 +288,16 @@ function GitHubTicketOptimization() {
       const data = await classifyTickets(tickets);
       setResults(data);
     } catch (err) {
-      setError(err.message || "Ticket optimization is temporarily unavailable.");
+      setError(err.message || "Ticket Triage is temporarily unavailable.");
     } finally {
       setRunning(false);
     }
   }
 
   return (
-    <AppShell title={pageTitleWithDate("Ticket Optimization")}>
+    <AppShell titleIcon={ListTree} title="Ticket Triage">
       <div className="bg-white border border-border rounded-card shadow-card p-4 mb-4">
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <select
             value={stateFilter}
             onChange={(e) => setStateFilter(e.target.value)}
@@ -317,7 +318,7 @@ function GitHubTicketOptimization() {
             className="inline-flex items-center gap-1.5 rounded-control bg-primary hover:bg-primary-hover text-white text-sm font-medium px-3.5 py-2 transition-colors disabled:opacity-60 disabled:pointer-events-none cursor-pointer"
           >
             {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            {running ? "Running..." : "Run Ticket Optimization"}
+            {running ? "Running..." : "Run Ticket Triage"}
           </button>
         </div>
       </div>
@@ -326,7 +327,7 @@ function GitHubTicketOptimization() {
         running={running}
         error={error}
         results={results}
-        emptyHint="Pick a state, then run ticket optimization to see results."
+        emptyHint="Pick a state, then run ticket triage to see results."
       />
     </AppShell>
   );
@@ -343,7 +344,7 @@ export default function TicketOptimization() {
 
   if (provider === null) {
     return (
-      <AppShell title={pageTitleWithDate("Ticket Optimization")}>
+      <AppShell titleIcon={ListTree} title="Ticket Triage">
         <div className="bg-white border border-border rounded-card shadow-card flex flex-col items-center justify-center py-16">
           <Loader2 className="h-5 w-5 text-ink-muted animate-spin mb-2" />
           <p className="text-sm text-ink-muted">Loading...</p>

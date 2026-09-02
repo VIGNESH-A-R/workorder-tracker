@@ -6,6 +6,7 @@ import {
   fetchIssue,
   fetchIssueComments,
   fetchPullRequests,
+  postIssueComment,
   testConnection,
 } from "./githubClient.js";
 
@@ -37,21 +38,28 @@ const issueSchema = {
   },
 };
 
+const commentSchema = {
+  type: "object",
+  properties: {
+    author: { type: "string" },
+    body: { type: "string" },
+    created: { type: ["string", "null"] },
+  },
+};
+
 const issueDetailSchema = {
   type: "object",
   properties: {
     ...issueSchema.properties,
-    comments: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          author: { type: "string" },
-          body: { type: "string" },
-          created: { type: ["string", "null"] },
-        },
-      },
-    },
+    comments: { type: "array", items: commentSchema },
+  },
+};
+
+const addCommentBodySchema = {
+  type: "object",
+  required: ["body"],
+  properties: {
+    body: { type: "string" },
   },
 };
 
@@ -287,6 +295,36 @@ export default async function githubRoutes(fastify) {
         if (err instanceof GitHubApiError && err.status === 404) {
           return reply.code(404).send({ error: `Issue #${request.params.number} was not found.` });
         }
+        const message = err instanceof GitHubApiError ? err.message : "Failed to reach GitHub.";
+        return reply.code(502).send({ error: message });
+      }
+    }
+  );
+
+  fastify.post(
+    "/issues/:number/comments",
+    { schema: { body: addCommentBodySchema, response: { 200: commentSchema } } },
+    async (request, reply) => {
+      const creds = await getCredentials();
+      if (!creds) {
+        return reply
+          .code(400)
+          .send({ error: "GitHub is not connected yet. Add your credentials in Settings." });
+      }
+
+      const text = request.body.body.trim();
+      if (!text) {
+        return reply.code(400).send({ error: "Comment text is required." });
+      }
+
+      try {
+        const comment = await postIssueComment(creds.owner, creds.repo, creds.token, request.params.number, text);
+        return {
+          author: comment.user?.login || "Unknown",
+          body: comment.body || "",
+          created: comment.created_at || null,
+        };
+      } catch (err) {
         const message = err instanceof GitHubApiError ? err.message : "Failed to reach GitHub.";
         return reply.code(502).send({ error: message });
       }

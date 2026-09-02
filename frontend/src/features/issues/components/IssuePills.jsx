@@ -38,14 +38,3 @@ export function PriorityPill({ priority }) {
   );
 }
 
-export function KeyPill({ issueKey }) {
-  return (
-    <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-600 whitespace-nowrap">
-      {issueKey}
-    </span>
-  );
-}
-
-export function isHighPriorityNotStarted(issue) {
-  return (issue.priority === "Highest" || issue.priority === "High") && issue.status === "To Do";
-}

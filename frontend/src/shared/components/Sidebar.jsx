@@ -1,75 +1,83 @@
+import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
-import {
-  Building2,
-  ClipboardList,
-  LayoutDashboard,
-  ListChecks,
-  ListTree,
-  Settings,
-  Ticket,
-  Users,
-} from "lucide-react";
-import { useAuth } from "../../features/auth/auth.jsx";
+import { ListTree, Menu, Settings, Ticket } from "lucide-react";
 
 const NAV_ITEMS = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/work-orders", label: "Work Orders", icon: ListChecks },
-  { to: "/technicians", label: "Technicians", icon: Users },
-  { to: "/customers", label: "Customers", icon: Building2 },
+  { to: "/issues", label: "Issues", icon: Ticket },
+  { to: "/ticket-optimization", label: "Ticket Triage", icon: ListTree },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
-const ADMIN_NAV_ITEMS = [
-  { to: "/admin/issues", label: "Issues", icon: Ticket },
-  { to: "/admin/ticket-optimization", label: "Ticket Optimization", icon: ListTree },
-];
+const COLLAPSED_STORAGE_KEY = "workorder_tracker_sidebar_collapsed";
 
-function navLinkClass({ isActive }) {
-  return [
-    "flex items-center gap-3 px-3 py-2 rounded-control text-sm font-medium transition-colors",
-    isActive ? "bg-orange-100 text-orange-600" : "text-gray-600 hover:bg-[#FFF7ED] hover:text-ink",
-  ].join(" ");
+function navLinkClass(collapsed) {
+  return ({ isActive }) =>
+    [
+      "flex items-center gap-3 rounded-control text-sm font-medium transition-colors",
+      collapsed ? "justify-center px-0 py-2.5" : "px-3 py-2",
+      isActive ? "bg-primary/10 text-primary" : "text-gray-600 hover:bg-slate-100 hover:text-ink",
+    ].join(" ");
 }
 
 export default function Sidebar() {
-  const { user } = useAuth();
-  const isAdministrator = user?.role === "Administrator";
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(COLLAPSED_STORAGE_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(COLLAPSED_STORAGE_KEY, String(collapsed));
+    } catch {
+      // Storage can be unavailable (e.g. private browsing) — collapsing
+      // still works for the session, it just won't persist.
+    }
+  }, [collapsed]);
 
   return (
-    <aside className="w-60 shrink-0 bg-sidebar border-r border-border flex flex-col">
-      <div className="flex items-center gap-2.5 px-5 h-16 border-b border-border">
-        <div className="h-8 w-8 rounded-control bg-primary flex items-center justify-center">
-          <ClipboardList className="h-[18px] w-[18px] text-white" strokeWidth={2.25} />
-        </div>
-        <span className="text-ink font-semibold text-[15px] tracking-tight">WorkFlow</span>
+    <aside
+      className={`shrink-0 bg-sidebar border-r border-border flex flex-col transition-[width] duration-200 ease-in-out ${
+        collapsed ? "w-16" : "w-[248px]"
+      }`}
+    >
+      <div className={`flex items-center h-16 border-b border-border ${collapsed ? "justify-center px-0" : "gap-2 px-4"}`}>
+        <button
+          type="button"
+          onClick={() => setCollapsed((c) => !c)}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className="shrink-0 h-8 w-8 flex items-center justify-center rounded-control text-ink-muted hover:bg-slate-100 hover:text-ink transition-colors cursor-pointer"
+        >
+          <Menu className="h-[18px] w-[18px]" strokeWidth={2} />
+        </button>
+
+        {!collapsed && (
+          <>
+            <div className="h-8 w-8 rounded-control bg-primary flex items-center justify-center shrink-0">
+              <Ticket className="h-[18px] w-[18px] text-white" strokeWidth={2.25} />
+            </div>
+            <span className="text-ink font-semibold text-[15px] tracking-tight truncate">Ticketing System</span>
+          </>
+        )}
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1">
-        {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
-          <NavLink key={to} to={to} end={end} className={navLinkClass}>
-            <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
-            {label}
-          </NavLink>
-        ))}
-
-        {isAdministrator && (
-          <>
-            <p className="px-3 pt-4 pb-1 text-xs font-semibold text-ink-muted uppercase tracking-wide">
-              Admin
-            </p>
-            {ADMIN_NAV_ITEMS.map(({ to, label, icon: Icon }) => (
-              <NavLink key={to} to={to} className={navLinkClass}>
-                <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
+        {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
+          <div key={to} className="relative group">
+            <NavLink to={to} className={navLinkClass(collapsed)}>
+              <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={2} />
+              {!collapsed && label}
+            </NavLink>
+            {collapsed && (
+              <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded-md bg-ink text-white text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-40">
                 {label}
-              </NavLink>
-            ))}
-          </>
-        )}
+              </span>
+            )}
+          </div>
+        ))}
       </nav>
-
-      <div className="px-5 py-4 border-t border-border text-xs text-ink-muted">
-        WorkFlow demo build
-      </div>
     </aside>
   );
 }

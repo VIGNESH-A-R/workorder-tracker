@@ -196,3 +196,13 @@ export function fetchIssue(siteUrl, email, apiToken, issueKey) {
     `/rest/api/3/issue/${encodeURIComponent(issueKey)}?fields=${ISSUE_DETAIL_FIELDS}`
   );
 }
+
+// `adfBody` is a full ADF document (see features/jira/jira.routes.js's
+// plainTextToAdf) — Jira's add-comment endpoint takes the same document
+// shape it returns when reading comments back, just wrapped as { body: ... }.
+export function addComment(siteUrl, email, apiToken, issueKey, adfBody) {
+  return jiraFetch(siteUrl, email, apiToken, `/rest/api/3/issue/${encodeURIComponent(issueKey)}/comment`, {
+    method: "POST",
+    body: JSON.stringify({ body: adfBody }),
+  });
+}
