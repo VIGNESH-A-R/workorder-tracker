@@ -130,11 +130,14 @@ export async function fetchBranches(owner, repo, token) {
   return items;
 }
 
-export async function fetchCommits(owner, repo, token, { sha, perPage = 10 } = {}) {
-  const params = new URLSearchParams({ per_page: String(perPage) });
-  if (sha) params.set("sha", sha);
+// Commits unique to `head` since it diverged from `base` — unlike
+// GET /commits?sha=, which returns the branch's ENTIRE history (everything
+// already on the base branch too), the compare endpoint's `.commits` array
+// is just the delta. `.commits` is always an array (empty when `head` has no
+// commits ahead of `base` yet — a normal, expected state, not an error).
+export async function compareCommits(owner, repo, token, base, head) {
   const response = await githubFetch(
-    `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/commits?${params.toString()}`,
+    `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/compare/${encodeURIComponent(base)}...${encodeURIComponent(head)}`,
     token
   );
   return response.json();
@@ -144,6 +147,17 @@ export async function fetchPullRequests(owner, repo, token, { state = "all", per
   const params = new URLSearchParams({ state, per_page: String(perPage) });
   const response = await githubFetch(
     `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls?${params.toString()}`,
+    token
+  );
+  return response.json();
+}
+
+// A PR's own commits — stable regardless of merge status or whether its
+// branch still exists (unlike comparing live against main, which goes to
+// zero once a PR merges, since its commits become part of main's history).
+export async function fetchPullRequestCommits(owner, repo, token, pullNumber) {
+  const response = await githubFetch(
+    `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${encodeURIComponent(pullNumber)}/commits?per_page=100`,
     token
   );
   return response.json();

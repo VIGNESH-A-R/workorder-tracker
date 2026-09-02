@@ -1,10 +1,11 @@
 import {
   GitHubApiError,
+  compareCommits,
   fetchAllIssues,
   fetchBranches,
-  fetchCommits,
   fetchIssue,
   fetchIssueComments,
+  fetchPullRequestCommits,
   fetchPullRequests,
   postIssueComment,
   testConnection,
@@ -83,6 +84,7 @@ const devActivityResponseSchema = {
           url: { type: "string" },
           date: { type: ["string", "null"] },
           author: { type: "string" },
+          authorAvatarUrl: { type: ["string", "null"] },
         },
       },
     },
@@ -130,6 +132,22 @@ function pullRequestReferencesIssue(pr, number) {
 
   const marker = `#${number}`;
   return containsIssueMarker(pr.title || "", marker) || containsIssueMarker(pr.body || "", marker);
+}
+
+// `commit.author` (GitHub's linked-account object) is the reliable source
+// for who made a commit, but only present when the commit's email matches a
+// real GitHub account — `commit.commit.author` (the raw git config identity)
+// is always present but may not correspond to any GitHub user, so it's only
+// a fallback, and never has an avatar.
+function mapCommit(commit) {
+  return {
+    sha: (commit.sha || "").slice(0, 7),
+    message: (commit.commit?.message || "").split("\n")[0],
+    url: commit.html_url,
+    date: commit.commit?.author?.date || null,
+    author: commit.author?.login || commit.commit?.author?.name || "Unknown",
+    authorAvatarUrl: commit.author?.avatar_url || null,
+  };
 }
 
 // Maps a GitHub issue to the SAME normalized shape used for Jira issues, so
@@ -347,7 +365,13 @@ export default async function githubRoutes(fastify) {
       const { number } = request.params;
 
       try {
-        const branches = await fetchBranches(creds.owner, creds.repo, creds.token);
+        // Branch and PR lookups are independent of each other — fetch both
+        // up front, then decide where commits come from.
+        const [branches, rawPulls] = await Promise.all([
+          fetchBranches(creds.owner, creds.repo, creds.token),
+          fetchPullRequests(creds.owner, creds.repo, creds.token, { state: "all", perPage: 50 }),
+        ]);
+
         const matchedBranch = branches.find((b) => containsWholeNumberToken(b.name, number));
         const branch = matchedBranch
           ? {
@@ -356,37 +380,34 @@ export default async function githubRoutes(fastify) {
             }
           : null;
 
-        // No point fetching commits for a branch that doesn't exist — an
-        // empty list is a normal "nothing worked on yet" state, not an error.
-        let commits = [];
-        if (branch) {
-          const rawCommits = await fetchCommits(creds.owner, creds.repo, creds.token, {
-            sha: branch.name,
-            perPage: 10,
-          });
-          commits = rawCommits.map((commit) => ({
-            sha: (commit.sha || "").slice(0, 7),
-            message: (commit.commit?.message || "").split("\n")[0],
-            url: commit.html_url,
-            date: commit.commit?.author?.date || null,
-            author: commit.commit?.author?.name || "Unknown",
-          }));
-        }
+        const matchingPulls = rawPulls.filter((pr) => pullRequestReferencesIssue(pr, number));
+        const pullRequests = matchingPulls.map((pr) => ({
+          number: pr.number,
+          title: pr.title || "",
+          state: pr.state,
+          merged: Boolean(pr.merged_at),
+          url: pr.html_url,
+          createdAt: pr.created_at || null,
+        }));
 
-        const rawPulls = await fetchPullRequests(creds.owner, creds.repo, creds.token, {
-          state: "all",
-          perPage: 50,
-        });
-        const pullRequests = rawPulls
-          .filter((pr) => pullRequestReferencesIssue(pr, number))
-          .map((pr) => ({
-            number: pr.number,
-            title: pr.title || "",
-            state: pr.state,
-            merged: Boolean(pr.merged_at),
-            url: pr.html_url,
-            createdAt: pr.created_at || null,
-          }));
+        // Once a PR exists, its own commits are the stable source of truth —
+        // comparing live against main goes to zero the moment the PR merges,
+        // since its commits become part of main's own history at that point.
+        // Only fall back to the live compare (in-progress work, no PR yet)
+        // when there's no matching PR to pull commits from.
+        let commits = [];
+        if (matchingPulls.length > 0) {
+          const rawCommits = await fetchPullRequestCommits(
+            creds.owner,
+            creds.repo,
+            creds.token,
+            matchingPulls[0].number
+          );
+          commits = rawCommits.map(mapCommit);
+        } else if (branch) {
+          const compareData = await compareCommits(creds.owner, creds.repo, creds.token, "main", branch.name);
+          commits = (compareData.commits || []).map(mapCommit);
+        }
 
         return { branch, commits, pullRequests };
       } catch (err) {
