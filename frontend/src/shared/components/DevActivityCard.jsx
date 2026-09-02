@@ -14,6 +14,31 @@ function prStatusLabel(pr) {
   return pr.state === "open" ? "Open" : "Closed";
 }
 
+// Small local copy rather than a shared util — same pattern already
+// duplicated per-component elsewhere (Topbar, the comments feed) rather
+// than promoted, since this is the kind of five-line helper CLAUDE.md says
+// to keep local until it's clearly worth sharing.
+function getInitials(name) {
+  if (!name) return "?";
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0].toUpperCase())
+    .join("");
+}
+
+function CommitAuthorAvatar({ commit }) {
+  if (commit.authorAvatarUrl) {
+    return <img src={commit.authorAvatarUrl} alt="" className="h-4 w-4 rounded-full shrink-0" />;
+  }
+  return (
+    <span className="h-4 w-4 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[8px] font-semibold shrink-0">
+      {getInitials(commit.author)}
+    </span>
+  );
+}
+
 // Read-only summary of the branch/commits/PR already associated with a
 // GitHub issue — nothing here triggers any action, it only links out to
 // GitHub for the user to look at.
@@ -80,16 +105,24 @@ export default function DevActivityCard({ identifier }) {
                       href={commit.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-sm rounded-control px-2 py-1.5 -mx-2 hover:bg-slate-50 transition-colors"
+                      className="flex items-start gap-2 text-sm rounded-control px-2 py-1.5 -mx-2 hover:bg-slate-50 transition-colors"
                     >
-                      <GitCommit className="h-4 w-4 text-ink-muted shrink-0" />
-                      <span className="font-mono text-xs bg-slate-100 text-slate-600 rounded px-1.5 py-0.5 shrink-0">
-                        {commit.sha}
-                      </span>
-                      <span className="text-ink truncate min-w-0">{commit.message}</span>
-                      <span className="text-xs text-ink-muted shrink-0 ml-auto">
-                        {formatRelative(commit.date)}
-                      </span>
+                      <GitCommit className="h-4 w-4 text-ink-muted shrink-0 mt-0.5" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs bg-slate-100 text-slate-600 rounded px-1.5 py-0.5 shrink-0">
+                            {commit.sha}
+                          </span>
+                          <span className="text-ink truncate min-w-0">{commit.message}</span>
+                          <span className="text-xs text-ink-muted shrink-0 ml-auto">
+                            {formatRelative(commit.date)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <CommitAuthorAvatar commit={commit} />
+                          <span className="text-xs text-ink-muted">by {commit.author}</span>
+                        </div>
+                      </div>
                     </a>
                   </li>
                 ))}
