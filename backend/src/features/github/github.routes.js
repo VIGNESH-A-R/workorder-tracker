@@ -131,7 +131,7 @@ function containsIssueMarker(text, marker) {
 
 function pullRequestReferencesIssue(pr, number) {
   const headRef = pr.head?.ref || "";
-  if (headRef.includes(`issue-${number}-`)) return true;
+  if (containsWholeNumberToken(headRef, number)) return true;
 
   const marker = `#${number}`;
   return containsIssueMarker(pr.title || "", marker) || containsIssueMarker(pr.body || "", marker);
