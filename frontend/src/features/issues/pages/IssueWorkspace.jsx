@@ -119,7 +119,7 @@ export default function IssueWorkspace() {
   }
 
   return (
-    <AppShell fullBleed titleIcon={Ticket} title="Issues">
+    <AppShell fullBleed titleIcon={Ticket} title="Tickets">
       {provider === null ? (
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="h-5 w-5 text-slate-300 animate-spin" />
